@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ジュース代決定ゲーム！</title>
+  <style>
+    :root {
+      --bg: #0d0d20;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Hiragino Sans', 'Meiryo', 'Yu Gothic', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* ── Setup Screen ── */
+    #setup-screen {
+      width: min(480px, 95vw);
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .title {
+      font-size: clamp(2.2rem, 8vw, 3.5rem);
+      font-weight: 900;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #ffd200, #f85757, #c84ff5, #00c8ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.3rem;
+    }
+
+    .subtitle {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.85rem;
+      margin-bottom: 2rem;
+    }
+
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.7rem;
+    }
+
+    .player-num {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: rgba(255,255,255,0.08);
+      border: 1.5px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+      color: #fff;
+      padding: 0.65rem 1rem;
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: rgba(200,79,245,0.7);
+      background: rgba(255,255,255,0.12);
+    }
+    input[type="text"]::placeholder { color: rgba(255,255,255,0.28); }
+
+    .row-btns {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 1.2rem 0 1.8rem;
+    }
+
+    .btn-sub {
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      border-radius: 10px;
+      padding: 0.5rem 1.2rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-family: inherit;
+      transition: background 0.2s;
+    }
+    .btn-sub:hover:not(:disabled) { background: rgba(255,255,255,0.18); }
+    .btn-sub:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    .btn-start {
+      width: 100%;
+      background: linear-gradient(135deg, #f85757, #c84ff5);
+      border: none;
+      color: #fff;
+      border-radius: 14px;
+      padding: 1rem;
+      font-size: 1.3rem;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 24px rgba(200,79,245,0.45);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(200,79,245,0.6); }
+    .btn-start:active { transform: translateY(0); }
+
+    /* ── Game Screen ── */
+    #game-screen {
+      display: none;
+      width: min(580px, 95vw);
+      padding: 1.5rem 1rem;
+    }
+
+    .game-header {
+      text-align: center;
+      margin-bottom: 1.4rem;
+    }
+    .game-header h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+    .game-header p {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.82rem;
+      margin-top: 0.2rem;
+    }
+
+    /* Player cards */
+    .pcard {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 0.85rem 1.2rem;
+      margin-bottom: 0.65rem;
+      transition: border-color 0.1s, box-shadow 0.1s;
+    }
+
+    .pcard.warm {
+      border-color: rgba(255,160,50,0.7);
+      box-shadow: 0 0 14px rgba(255,120,30,0.3);
+    }
+    .pcard.hot {
+      border-color: rgba(255,60,60,0.9);
+      box-shadow: 0 0 26px rgba(255,30,30,0.5);
+    }
+    .pcard.rainbow {
+      animation: card-rainbow 0.5s linear infinite;
+    }
+    @keyframes card-rainbow {
+      0%   { border-color: #ff0000; box-shadow: 0 0 28px #ff000066; }
+      16%  { border-color: #ff8800; box-shadow: 0 0 28px #ff880066; }
+      33%  { border-color: #ffe000; box-shadow: 0 0 28px #ffe00066; }
+      50%  { border-color: #00ff88; box-shadow: 0 0 28px #00ff8866; }
+      66%  { border-color: #00aaff; box-shadow: 0 0 28px #00aaff66; }
+      83%  { border-color: #aa00ff; box-shadow: 0 0 28px #aa00ff66; }
+      100% { border-color: #ff0000; box-shadow: 0 0 28px #ff000066; }
+    }
+
+    .pcard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.45rem;
+    }
+
+    .pcard-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .pcard-pct {
+      font-size: 1.35rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      min-width: 3.6rem;
+      text-align: right;
+      transition: color 0.15s;
+    }
+    .pcard-pct.warm  { color: #ffb060; }
+    .pcard-pct.hot   { color: #ff5555; }
+    .pcard-pct.rbw   { animation: text-rainbow 0.5s linear infinite; }
+
+    @keyframes text-rainbow {
+      0%   { color: #ff4444; }
+      20%  { color: #ffcc00; }
+      40%  { color: #44ff88; }
+      60%  { color: #44aaff; }
+      80%  { color: #cc44ff; }
+      100% { color: #ff4444; }
+    }
+
+    .track {
+      background: rgba(255,255,255,0.08);
+      border-radius: 100px;
+      height: 13px;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, #4facfe, #00f2fe);
+      transition: width 0.1s linear;
+    }
+
+    .pcard.warm .fill {
+      background: linear-gradient(90deg, #f7971e, #ffd200);
+    }
+    .pcard.hot .fill {
+      background: linear-gradient(90deg, #ff416c, #ff4b2b);
+    }
+    .pcard.rainbow .fill {
+      background: linear-gradient(90deg,
+        red 0%, orange 14%, yellow 28%,
+        #00ff88 42%, #00aaff 57%, #aa00ff 71%,
+        red 100%);
+      background-size: 200% 100%;
+      animation: rainbow-shift 0.8s linear infinite;
+    }
+    @keyframes rainbow-shift {
+      from { background-position: 200% center; }
+      to   { background-position: 0%   center; }
+    }
+
+    /* ── Result Overlay ── */
+    #result-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(5,5,18,0.97);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+      padding: 2rem;
+    }
+    #result-overlay.show { display: flex; }
+
+    .res-emoji {
+      font-size: 4.5rem;
+      margin-bottom: 0.6rem;
+      animation: bounce 0.7s ease infinite alternate;
+    }
+    @keyframes bounce {
+      from { transform: translateY(0) rotate(-6deg); }
+      to   { transform: translateY(-18px) rotate(6deg); }
+    }
+
+    .res-name {
+      font-size: clamp(2.8rem, 12vw, 5.5rem);
+      font-weight: 900;
+      animation: name-rainbow 0.5s linear infinite;
+      line-height: 1.1;
+      margin-bottom: 0.4rem;
+    }
+    @keyframes name-rainbow {
+      0%   { color: #ff4444; text-shadow: 0 0 30px #ff444488; }
+      20%  { color: #ffcc00; text-shadow: 0 0 30px #ffcc0088; }
+      40%  { color: #44ff88; text-shadow: 0 0 30px #44ff8888; }
+      60%  { color: #44aaff; text-shadow: 0 0 30px #44aaff88; }
+      80%  { color: #cc44ff; text-shadow: 0 0 30px #cc44ff88; }
+      100% { color: #ff4444; text-shadow: 0 0 30px #ff444488; }
+    }
+
+    .res-msg {
+      font-size: clamp(1.1rem, 4vw, 1.7rem);
+      color: rgba(255,255,255,0.85);
+      margin-bottom: 2.2rem;
+      font-weight: 600;
+    }
+
+    /* PUSH button */
+    #push-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1.8rem;
+      animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    #push-wrap.show { display: flex; }
+
+    @keyframes pop-in {
+      from { transform: scale(0) rotate(-15deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0);      opacity: 1; }
+    }
+
+    .push-hint {
+      font-size: 0.75rem;
+      color: rgba(255,220,0,0.8);
+      margin-bottom: 0.5rem;
+      animation: blink 0.9s ease infinite;
+      letter-spacing: 0.05em;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    .btn-push {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ffd200, #ff4b2b);
+      border: 4px solid rgba(255,220,0,0.6);
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 900;
+      font-family: inherit;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      animation: push-pulse 1.1s ease infinite;
+    }
+    @keyframes push-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(255,210,0,0.7); transform: scale(1);    }
+      70%  { box-shadow: 0 0 0 22px rgba(255,210,0,0);   transform: scale(1.06); }
+      100% { box-shadow: 0 0 0 0   rgba(255,210,0,0);   transform: scale(1);    }
+    }
+    .btn-push:active { transform: scale(0.9) !important; }
+
+    /* Retry */
+    .btn-retry {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      border-radius: 12px;
+      padding: 0.75rem 2.5rem;
+      font-size: 1rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-retry:hover { background: rgba(255,255,255,0.2); }
+
+    /* ── White flash (reversal) ── */
+    #flash {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #fff;
+      z-index: 400;
+      pointer-events: none;
+    }
+    #flash.show {
+      display: block;
+      animation: flash-out 0.55s ease forwards;
+    }
+    @keyframes flash-out {
+      0%   { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Reversal banner ── */
+    #reversal-banner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-8deg);
+      font-size: clamp(3rem, 12vw, 6rem);
+      font-weight: 900;
+      color: #fff;
+      text-shadow:
+        0 0 20px #ff4444,
+        0 0 40px #ff4444,
+        4px 4px 0 #cc0000;
+      z-index: 350;
+      pointer-events: none;
+      white-space: nowrap;
+      animation: banner-in 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    #reversal-banner.show { display: block; }
+    @keyframes banner-in {
+      from { transform: translate(-50%,-50%) rotate(-8deg) scale(0.2); opacity:0; }
+      to   { transform: translate(-50%,-50%) rotate(-8deg) scale(1);   opacity:1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Setup Screen ── -->
+<div id="setup-screen">
+  <h1 class="title">🧃 ジュース代<br>決定ゲーム！</h1>
+  <p class="subtitle">2〜5人の名前を入力してスタート</p>
+
+  <div id="player-inputs"></div>
+
+  <div class="row-btns">
+    <button class="btn-sub" id="btn-remove" onclick="removePlayer()">− 減らす</button>
+    <button class="btn-sub" id="btn-add"    onclick="addPlayer()">＋ 追加</button>
+  </div>
+
+  <button class="btn-start" onclick="startGame()">スタート！🎲</button>
+</div>
+
+<!-- ── Game Screen ── -->
+<div id="game-screen">
+  <div class="game-header">
+    <h2>💸 支払い期待度</h2>
+    <p id="game-sub">誰が払う運命…？</p>
+  </div>
+  <div id="player-cards"></div>
+</div>
+
+<!-- ── Result Overlay ── -->
+<div id="result-overlay">
+  <div class="res-emoji" id="res-emoji">🧃</div>
+  <div class="res-name"  id="res-name"></div>
+  <div class="res-msg"   id="res-msg">がジュース代を払います！</div>
+
+  <div id="push-wrap">
+    <div class="push-hint">✨ チャンスかも！？ ✨</div>
+    <button class="btn-push" onclick="doPush()">PUSH</button>
+  </div>
+
+  <button class="btn-retry" onclick="resetGame()">もう一回！</button>
+</div>
+
+<!-- ── Reversal banner ── -->
+<div id="reversal-banner">😱 逆　転！！</div>
+
+<!-- ── White flash ── -->
+<div id="flash"></div>
+
+<script>
+  // ============================================================
+  // STATE
+  // ============================================================
+  const MIN = 2, MAX = 5;
+  let names = ['', ''];          // player name strings
+  let loserIdx = -1;             // predetermined loser index
+  let vals = [];                 // current displayed values (0-100)
+  let targets = [];              // smooth targets
+  let animId = null;
+  let animStart = 0;
+  let lastTargetTick = 0;
+  let pushShown = false;
+
+  const CHAOS_END  = 3500;
+  const DRAMA_END  = 5500;
+  const FINAL_END  = 7200;       // total animation duration
+
+  // ============================================================
+  // SETUP UI
+  // ============================================================
+  function renderSetup() {
+    const c = document.getElementById('player-inputs');
+    c.innerHTML = '';
+    names.forEach((n, i) => {
+      const row = document.createElement('div');
+      row.className = 'player-row';
+      row.innerHTML = `
+        <div class="player-num">${i + 1}</div>
+        <input type="text" value="${escHtml(n)}"
+               placeholder="プレイヤー${i + 1}の名前"
+               maxlength="12"
+               oninput="names[${i}]=this.value"
+               onkeydown="if(event.key==='Enter')document.querySelector('.btn-start').click()">
+      `;
+      c.appendChild(row);
+    });
+    document.getElementById('btn-add').disabled    = names.length >= MAX;
+    document.getElementById('btn-remove').disabled = names.length <= MIN;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function addPlayer() {
+    if (names.length < MAX) { names.push(''); renderSetup(); focusLast(); }
+  }
+  function removePlayer() {
+    if (names.length > MIN) { names.pop(); renderSetup(); }
+  }
+  function focusLast() {
+    const inputs = document.querySelectorAll('#player-inputs input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }
+
+  // ============================================================
+  // START GAME
+  // ============================================================
+  function startGame() {
+    const resolved = names.map((n, i) => n.trim() || `プレイヤー${i + 1}`);
+
+    loserIdx = Math.floor(Math.random() * resolved.length);
+    pushShown = false;
+
+    // Init animation values
+    vals    = resolved.map(() => 8 + Math.random() * 25);
+    targets = [...vals];
+
+    buildCards(resolved);
+
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display  = 'block';
+
+    animStart       = performance.now();
+    lastTargetTick  = animStart;
+    animId          = requestAnimationFrame(loop);
+  }
+
+  function buildCards(resolved) {
+    const c = document.getElementById('player-cards');
+    c.innerHTML = '';
+    resolved.forEach((name, i) => {
+      const d = document.createElement('div');
+      d.className = 'pcard';
+      d.id = `pc${i}`;
+      d.innerHTML = `
+        <div class="pcard-header">
+          <span class="pcard-name">${escHtml(name)}</span>
+          <span class="pcard-pct" id="pp${i}">0%</span>
+        </div>
+        <div class="track"><div class="fill" id="pf${i}" style="width:0%"></div></div>
+      `;
+      c.appendChild(d);
+    });
+  }
+
+  // ============================================================
+  // ANIMATION LOOP
+  // ============================================================
+  function loop(now) {
+    const elapsed = now - animStart;
+
+    // Update targets on tick
+    if (now - lastTargetTick > 230) {
+      lastTargetTick = now;
+      setTargets(elapsed);
+    }
+
+    // Smooth values → targets
+    const LERP = 0.16;
+    vals = vals.map((v, i) => v + (targets[i] - v) * LERP);
+
+    // Final convergence: override interpolation
+    if (elapsed >= DRAMA_END) {
+      const t = Math.min((elapsed - DRAMA_END) / (FINAL_END - DRAMA_END), 1);
+      const ease = t < 0.5 ? 2*t*t : -1+(4-2*t)*t; // ease in-out quad
+      vals = vals.map((v, i) => {
+        const goal = (i === loserIdx) ? 100 : 0;
+        return v + (goal - v) * ease * 0.2;
+      });
+    }
+
+    renderCards();
+
+    if (elapsed >= FINAL_END) {
+      // Snap & reveal
+      vals = vals.map((_, i) => i === loserIdx ? 100 : 0);
+      renderCards();
+      showResult();
+      return;
+    }
+
+    animId = requestAnimationFrame(loop);
+  }
+
+  function setTargets(elapsed) {
+    const n = vals.length;
+
+    if (elapsed < CHAOS_END) {
+      // Pure chaos: all random
+      targets = targets.map(() => 5 + Math.random() * 78);
+
+    } else if (elapsed < DRAMA_END) {
+      // Drama: biased toward loser + fake-outs
+      const fakeOut = Math.random() < 0.35;
+      const spikeIdx = fakeOut ? Math.floor(Math.random() * n) : loserIdx;
+      targets = targets.map((_, i) => {
+        if (i === spikeIdx) return 65 + Math.random() * 30;
+        return 5 + Math.random() * 45;
+      });
+    }
+    // Final phase targets are overridden in the loop
+  }
+
+  function renderCards() {
+    vals.forEach((raw, i) => {
+      const v = Math.max(0, Math.min(100, raw));
+      const card = document.getElementById(`pc${i}`);
+      const bar  = document.getElementById(`pf${i}`);
+      const pct  = document.getElementById(`pp${i}`);
+      if (!card) return;
+
+      bar.style.width = v.toFixed(1) + '%';
+      pct.textContent = Math.round(v) + '%';
+
+      // Tier classes
+      card.classList.remove('warm', 'hot', 'rainbow');
+      pct.classList.remove('warm', 'hot', 'rbw');
+
+      if (v >= 90) {
+        card.classList.add('rainbow');
+        pct.classList.add('rbw');
+      } else if (v >= 68) {
+        card.classList.add('hot');
+        pct.classList.add('hot');
+      } else if (v >= 45) {
+        card.classList.add('warm');
+        pct.classList.add('warm');
+      }
+    });
+  }
+
+  // ============================================================
+  // SHOW RESULT
+  // ============================================================
+  function showResult() {
+    const resolved = names.map((n, i) => n.trim() || `プレイヤー${i + 1}`);
+
+    document.getElementById('res-emoji').textContent = '🧃';
+    document.getElementById('res-name').textContent  = resolved[loserIdx] + 'さん';
+    document.getElementById('res-msg').textContent   = 'がジュース代を払います！';
+    document.getElementById('push-wrap').classList.remove('show');
+
+    document.getElementById('result-overlay').classList.add('show');
+
+    // Random 50% chance to show PUSH button after 2-3.5s
+    if (!pushShown && Math.random() < 0.5) {
+      const delay = 2000 + Math.random() * 1500;
+      setTimeout(() => {
+        if (!pushShown) {
+          pushShown = true;
+          document.getElementById('push-wrap').classList.add('show');
+        }
+      }, delay);
+    }
+  }
+
+  // ============================================================
+  // PUSH / REVERSAL
+  // ============================================================
+  function doPush() {
+    // Hide PUSH button immediately
+    document.getElementById('push-wrap').classList.remove('show');
+    pushShown = true;
+
+    const resolved = names.map((n, i) => n.trim() || `プレイヤー${i + 1}`);
+    const n = resolved.length;
+
+    // Pick a different loser
+    let newLoser;
+    do { newLoser = Math.floor(Math.random() * n); }
+    while (newLoser === loserIdx && n > 1);
+
+    // White flash
+    const flash = document.getElementById('flash');
+    flash.classList.remove('show');
+    void flash.offsetWidth; // force reflow
+    flash.classList.add('show');
+
+    // Show reversal banner
+    const banner = document.getElementById('reversal-banner');
+    banner.classList.remove('show');
+    void banner.offsetWidth;
+    banner.classList.add('show');
+    setTimeout(() => banner.classList.remove('show'), 1400);
+
+    // Update result text after flash peak
+    setTimeout(() => {
+      loserIdx = newLoser;
+      document.getElementById('res-emoji').textContent = '😱';
+      document.getElementById('res-name').textContent  = resolved[newLoser] + 'さん';
+      document.getElementById('res-msg').textContent   = 'に逆転！！ ジュース代を払います！！';
+    }, 350);
+  }
+
+  // ============================================================
+  // RESET
+  // ============================================================
+  function resetGame() {
+    if (animId) { cancelAnimationFrame(animId); animId = null; }
+    document.getElementById('result-overlay').classList.remove('show');
+    document.getElementById('game-screen').style.display  = 'none';
+    document.getElementById('setup-screen').style.display = 'block';
+  }
+
+  // ============================================================
+  // INIT
+  // ============================================================
+  renderSetup();
+</script>
+</body>
+</html>
